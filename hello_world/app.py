@@ -176,6 +176,7 @@ def page_feedback_rules():
                         statement=query,
                         wait_timeout="30s",
                     )
+                    st.info(response)
                     if response.result and response.manifest:
                         columns = [col.name for col in response.manifest.schema.columns]
                         rows = []
