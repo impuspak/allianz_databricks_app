@@ -89,7 +89,8 @@ def page_dq_agent():
             st.rerun()
     with col2:
         if st.button("Give Feedback for Rules", key="feedback_rules"):
-            st.info("Feedback page coming soon...")
+            navigate("feedback_rules")
+            st.rerun()
 
     st.markdown("---")
     if st.button("⬅ Back to Home", key="back_home_dq"):
@@ -147,6 +148,70 @@ def page_generate_dq_rules():
         st.rerun()
 
 
+# ── Page: Feedback for Rules ──────────────────────────────────────────────────
+def page_feedback_rules():
+    st.markdown('<p class="launch-title">Give Feedback for Rules</p>', unsafe_allow_html=True)
+    st.markdown(
+        '<p class="launch-sub">Fetch existing DQ rules and provide feedback</p>',
+        unsafe_allow_html=True,
+    )
+
+    table_name = st.text_input("Enter table name", value="", key="feedback_table_name")
+
+    if st.button("Fetch Rules", key="fetch_rules"):
+        if not table_name:
+            st.error("Please enter a table name.")
+        else:
+            try:
+                w = WorkspaceClient()
+                warehouses = list(w.warehouses.list())
+                if not warehouses:
+                    st.error("No SQL warehouse available.")
+                else:
+                    warehouse_id = warehouses[0].id
+                    query = f"SELECT * FROM allianz_ops.dqx_schema.table_checks WHERE table_name = '{table_name}'"
+                    response = w.statement_execution.execute_statement(
+                        warehouse_id=warehouse_id,
+                        statement=query,
+                        wait_timeout="30s",
+                    )
+                    if response.result and response.manifest:
+                        columns = [col.name for col in response.manifest.schema.columns]
+                        rows = []
+                        for chunk in response.result.data_array:
+                            rows.append(chunk)
+                        if rows:
+                            df = pd.DataFrame(rows, columns=columns)
+                            st.session_state.feedback_df = df
+                        else:
+                            st.warning("No records found for the given table name.")
+                            st.session_state.feedback_df = None
+                    else:
+                        st.warning("No records found for the given table name.")
+                        st.session_state.feedback_df = None
+            except Exception as e:
+                st.error(f"Failed to fetch rules: {e}")
+                st.session_state.feedback_df = None
+
+    # Display results with radio buttons
+    if "feedback_df" in st.session_state and st.session_state.feedback_df is not None:
+        df = st.session_state.feedback_df
+        st.markdown("---")
+        st.markdown("**Fetched Rules:**")
+        options = [f"Row {i+1}" for i in range(len(df))]
+        selected = st.radio("Select a rule:", options, key="rule_selection")
+        selected_idx = options.index(selected)
+
+        display_df = df.copy()
+        display_df.insert(0, "Select", ["🔘" if i == selected_idx else "⚪" for i in range(len(df))])
+        st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+    st.markdown("---")
+    if st.button("⬅ Back to DQ Agent", key="back_dq_feedback"):
+        navigate("dq_agent")
+        st.rerun()
+
+
 # ── Router ────────────────────────────────────────────────────────────────────
 if st.session_state.page == "home":
     page_home()
@@ -154,5 +219,7 @@ elif st.session_state.page == "dq_agent":
     page_dq_agent()
 elif st.session_state.page == "generate_dq_rules":
     page_generate_dq_rules()
+elif st.session_state.page == "feedback_rules":
+    page_feedback_rules()
 else:
     page_home()
