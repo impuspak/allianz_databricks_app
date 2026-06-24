@@ -1,5 +1,8 @@
-command: [
-  "streamlit", 
-  "run",
-  "app.py"
-]
+command:
+  - python
+  - -m
+  - streamlit
+  - run
+  - app.py
+  - --server.headless
+  - "true"
