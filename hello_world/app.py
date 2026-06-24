@@ -103,7 +103,7 @@ def page_dq_agent():
         '<p class="launch-sub">Choose an action</p>',
         unsafe_allow_html=True,
     )
-    col1, col2 = st.columns(2, gap="large")
+    col1, col2, col3 = st.columns(3, gap="large")
     with col1:
         if st.button("Generate DQ Rules", key="gen_dq_rules"):
             navigate("generate_dq_rules")
@@ -111,6 +111,10 @@ def page_dq_agent():
     with col2:
         if st.button("Give Feedback for Rules", key="feedback_rules"):
             navigate("feedback_rules")
+            st.rerun()
+    with col3:
+        if st.button("Apply DQ Rules", key="apply_dq_rules"):
+            navigate("apply_dq_rules")
             st.rerun()
 
     st.markdown("---")
@@ -165,6 +169,50 @@ def page_generate_dq_rules():
 
     st.markdown("---")
     if st.button("⬅ Back to DQ Agent", key="back_dq_agent"):
+        navigate("dq_agent")
+        st.rerun()
+
+
+# ── Page: Apply DQ Rules ──────────────────────────────────────────────────────
+def page_apply_dq_rules():
+    st.markdown('<p class="launch-title">Apply DQ Rules</p>', unsafe_allow_html=True)
+    st.markdown(
+        '<p class="launch-sub">Provide parameters to apply DQ rules on your data</p>',
+        unsafe_allow_html=True,
+    )
+
+    with st.form("apply_dq_rules_form"):
+        source_table = st.text_input("Source Table", value="")
+        source_sql = st.text_input("Source SQL (Optional - For incremental data)", value="")
+        target_valid_table = st.text_input("Target Valid Table", value="")
+        target_quarantine_table = st.text_input("Target Quarantine Table", value="")
+
+        submitted = st.form_submit_button("Apply")
+
+    if submitted:
+        if not source_table:
+            st.error("Please fill in Source Table.")
+        else:
+            job_params = {
+                "table_for_dq_check": source_table,
+                "data_for_dq_check": source_sql,
+                "good_data_table": target_valid_table,
+                "quarantine_table": target_quarantine_table,
+            }
+            try:
+                w = WorkspaceClient()
+                run = w.jobs.run_now(
+                    job_id=424157152675054,
+                    notebook_params=job_params,
+                )
+                st.success(
+                    f"Job triggered successfully! Run ID: {run.run_id}"
+                )
+            except Exception as e:
+                st.error(f"Failed to trigger job: {e}")
+
+    st.markdown("---")
+    if st.button("⬅ Back to DQ Agent", key="back_dq_agent_apply"):
         navigate("dq_agent")
         st.rerun()
 
@@ -330,6 +378,8 @@ elif st.session_state.page == "dq_agent":
     page_dq_agent()
 elif st.session_state.page == "generate_dq_rules":
     page_generate_dq_rules()
+elif st.session_state.page == "apply_dq_rules":
+    page_apply_dq_rules()
 elif st.session_state.page == "feedback_rules":
     page_feedback_rules()
 elif st.session_state.page == "rule_detail":
