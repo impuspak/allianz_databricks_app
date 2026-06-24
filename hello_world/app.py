@@ -169,7 +169,7 @@ def page_feedback_rules():
                     st.error("No SQL warehouse available.")
                 else:
                     warehouse_id = warehouses[0].id
-                    query = f"SELECT rule_id, column_name FROM allianz_ops.dqx_schema.table_checks WHERE table_name = '{table_name}'"
+                    query = f"SELECT rule_id, column, name, criticality, check FROM allianz_ops.dqx_schema.table_checks WHERE table_name = '{table_name}'"
                     st.info(query)
                     response = w.statement_execution.execute_statement(
                         warehouse_id=warehouse_id,
