@@ -225,7 +225,10 @@ def page_feedback_rules():
                     key=f"select_row_{i}",
                     use_container_width=True,
                 ):
+                    # Store selected record and navigate to detail page
                     st.session_state.selected_rule_idx = i
+                    st.session_state.selected_rule_record = df.iloc[i].to_dict()
+                    navigate("rule_detail")
                     st.rerun()
             for j, col_name in enumerate(df.columns):
                 with row_cols[j + 1]:
@@ -234,6 +237,70 @@ def page_feedback_rules():
     st.markdown("---")
     if st.button("⬅ Back to DQ Agent", key="back_dq_feedback"):
         navigate("dq_agent")
+        st.rerun()
+
+
+# ── Page: Rule Detail (Feedback) ───────────────────────────────────────────
+def page_rule_detail():
+    st.markdown('<p class="launch-title">Rule Feedback</p>', unsafe_allow_html=True)
+    st.markdown(
+        '<p class="launch-sub">Review the selected rule and provide feedback</p>',
+        unsafe_allow_html=True,
+    )
+
+    record = st.session_state.get("selected_rule_record", {})
+    if not record:
+        st.warning("No rule selected. Please go back and select a rule.")
+    else:
+        # Display pre-filled immutable text fields for each column
+        for col_name, col_value in record.items():
+            st.text_input(f"{col_name}", value=str(col_value), disabled=True, key=f"detail_{col_name}")
+
+        st.markdown("---")
+
+        # Feedback text input
+        feedback = st.text_input("Feedback", value="", key="feedback_input")
+
+        # Modify and Delete buttons
+        col1, col2 = st.columns(2, gap="large")
+        with col1:
+            if st.button("Modify", key="btn_modify"):
+                rule_id = str(record.get("rule_id", ""))
+                job_params = {
+                    "rule_id": rule_id,
+                    "feedback": feedback,
+                    "modify/delete": "modify",
+                }
+                try:
+                    w = WorkspaceClient()
+                    run = w.jobs.run_now(
+                        job_id=1038372772557356,
+                        notebook_params=job_params,
+                    )
+                    st.success(f"Modify job triggered! Run ID: {run.run_id}")
+                except Exception as e:
+                    st.error(f"Failed to trigger job: {e}")
+        with col2:
+            if st.button("Delete", key="btn_delete"):
+                rule_id = str(record.get("rule_id", ""))
+                job_params = {
+                    "rule_id": rule_id,
+                    "feedback": feedback,
+                    "modify/delete": "delete",
+                }
+                try:
+                    w = WorkspaceClient()
+                    run = w.jobs.run_now(
+                        job_id=1038372772557356,
+                        notebook_params=job_params,
+                    )
+                    st.success(f"Delete job triggered! Run ID: {run.run_id}")
+                except Exception as e:
+                    st.error(f"Failed to trigger job: {e}")
+
+    st.markdown("---")
+    if st.button("⬅ Back to Feedback Rules", key="back_feedback_from_detail"):
+        navigate("feedback_rules")
         st.rerun()
 
 
@@ -246,5 +313,7 @@ elif st.session_state.page == "generate_dq_rules":
     page_generate_dq_rules()
 elif st.session_state.page == "feedback_rules":
     page_feedback_rules()
+elif st.session_state.page == "rule_detail":
+    page_rule_detail()
 else:
     page_home()
