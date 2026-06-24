@@ -169,7 +169,7 @@ def page_feedback_rules():
                     st.error("No SQL warehouse available.")
                 else:
                     warehouse_id = warehouses[0].id
-                    query = f"SELECT * FROM allianz_ops.dqx_schema.table_checks WHERE table_name = '{table_name}'"
+                    query = f"SELECT rule_id, column_name FROM allianz_ops.dqx_schema.table_checks WHERE table_name = '{table_name}'"
                     st.info(query)
                     response = w.statement_execution.execute_statement(
                         warehouse_id=warehouse_id,
@@ -195,18 +195,24 @@ def page_feedback_rules():
                 st.error(f"Failed to fetch rules: {e}")
                 st.session_state.feedback_df = None
 
-    # Display results with radio buttons
+    # Display results with radio buttons inline per record
     if "feedback_df" in st.session_state and st.session_state.feedback_df is not None:
         df = st.session_state.feedback_df
         st.markdown("---")
         st.markdown("**Fetched Rules:**")
-        options = [f"Row {i+1}" for i in range(len(df))]
-        selected = st.radio("Select a rule:", options, key="rule_selection")
-        selected_idx = options.index(selected)
 
-        display_df = df.copy()
-        display_df.insert(0, "Select", ["🔘" if i == selected_idx else "⚪" for i in range(len(df))])
-        st.dataframe(display_df, use_container_width=True, hide_index=True)
+        # Build radio options with row data inline so radio button appears next to each record
+        options = []
+        for i, row in df.iterrows():
+            row_str = " | ".join([f"{col}: {row[col]}" for col in df.columns])
+            options.append(row_str)
+
+        selected = st.radio(
+            "Select a rule:",
+            options,
+            key="rule_selection",
+        )
+        st.session_state.selected_rule_idx = options.index(selected)
 
     st.markdown("---")
     if st.button("⬅ Back to DQ Agent", key="back_dq_feedback"):
