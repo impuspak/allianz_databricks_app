@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 from databricks.sdk import WorkspaceClient
 
 st.set_page_config(
