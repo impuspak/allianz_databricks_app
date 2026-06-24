@@ -170,6 +170,7 @@ def page_feedback_rules():
                 else:
                     warehouse_id = warehouses[0].id
                     query = f"SELECT * FROM allianz_ops.dqx_schema.table_checks WHERE table_name = '{table_name}'"
+                    st.info(query)
                     response = w.statement_execution.execute_statement(
                         warehouse_id=warehouse_id,
                         statement=query,
