@@ -186,6 +186,7 @@ def page_apply_dq_rules():
         source_sql = st.text_input("Source SQL (Optional - For incremental data)", value="")
         target_valid_table = st.text_input("Target Valid Table", value="")
         target_quarantine_table = st.text_input("Target Quarantine Table", value="")
+        overwrite_target_tables = st.text_input("Overwrite Target Tables (Y/N)", value="")
 
         submitted = st.form_submit_button("Apply")
 
@@ -198,6 +199,7 @@ def page_apply_dq_rules():
                 "data_for_dq_check": source_sql,
                 "good_data_table": target_valid_table,
                 "quarantine_table": target_quarantine_table,
+                "overwrite_target_data" : overwrite_target_tables
             }
             try:
                 w = WorkspaceClient()
