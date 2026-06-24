@@ -195,24 +195,41 @@ def page_feedback_rules():
                 st.error(f"Failed to fetch rules: {e}")
                 st.session_state.feedback_df = None
 
-    # Display results with radio buttons inline per record
+    # Display results in tabular format with radio buttons as first column
     if "feedback_df" in st.session_state and st.session_state.feedback_df is not None:
         df = st.session_state.feedback_df
         st.markdown("---")
         st.markdown("**Fetched Rules:**")
 
-        # Build radio options with row data inline so radio button appears next to each record
-        options = []
-        for i, row in df.iterrows():
-            row_str = " | ".join([f"{col}: {row[col]}" for col in df.columns])
-            options.append(row_str)
+        # Initialize selected row
+        if "selected_rule_idx" not in st.session_state:
+            st.session_state.selected_rule_idx = 0
 
-        selected = st.radio(
-            "Select a rule:",
-            options,
-            key="rule_selection",
-        )
-        st.session_state.selected_rule_idx = options.index(selected)
+        num_data_cols = len(df.columns)
+        col_widths = [0.5] + [2] * num_data_cols
+
+        # Render column header row
+        header_cols = st.columns(col_widths)
+        with header_cols[0]:
+            st.markdown("")
+        for j, col_name in enumerate(df.columns):
+            with header_cols[j + 1]:
+                st.markdown(f"**{col_name}**")
+
+        # Render each record row with radio button in first column
+        for i in range(len(df)):
+            row_cols = st.columns(col_widths)
+            with row_cols[0]:
+                if st.button(
+                    "🔘" if i == st.session_state.selected_rule_idx else "⚪",
+                    key=f"select_row_{i}",
+                    use_container_width=True,
+                ):
+                    st.session_state.selected_rule_idx = i
+                    st.rerun()
+            for j, col_name in enumerate(df.columns):
+                with row_cols[j + 1]:
+                    st.markdown(str(df.iloc[i][col_name]))
 
     st.markdown("---")
     if st.button("⬅ Back to DQ Agent", key="back_dq_feedback"):
