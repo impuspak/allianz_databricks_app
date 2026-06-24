@@ -44,6 +44,22 @@ st.markdown(
     div.stButton > button:active {
         transform: translateY(0px);
     }
+    /* Brighter/whiter field labels */
+    label, .stTextInput label, .stTextArea label, .stSelectbox label {
+        color: #ffffff !important;
+        font-weight: 600 !important;
+    }
+    /* Brighter/whiter table display text */
+    .rules-table-header {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        font-size: 0.95rem;
+    }
+    .rules-table-cell {
+        color: #f0f0f0 !important;
+        font-weight: 500 !important;
+        font-size: 0.9rem;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -55,6 +71,11 @@ if "page" not in st.session_state:
 
 
 def navigate(page_name: str):
+    # If navigating to feedback_rules, clear cached data so page refreshes
+    if page_name == "feedback_rules":
+        st.session_state.pop("feedback_df", None)
+        st.session_state.pop("selected_rule_idx", None)
+        st.session_state.pop("selected_rule_record", None)
     st.session_state.page = page_name
 
 
@@ -170,13 +191,11 @@ def page_feedback_rules():
                 else:
                     warehouse_id = warehouses[0].id
                     query = f"SELECT rule_id, column, name, criticality, check FROM allianz_ops.dqx_schema.table_checks WHERE table_name = '{table_name}'"
-                    st.info(query)
                     response = w.statement_execution.execute_statement(
                         warehouse_id=warehouse_id,
                         statement=query,
                         wait_timeout="30s",
                     )
-                    st.info(response)
                     if response.result and response.manifest:
                         columns = [col.name for col in response.manifest.schema.columns]
                         rows = []
@@ -208,15 +227,15 @@ def page_feedback_rules():
         num_data_cols = len(df.columns)
         col_widths = [0.5] + [2] * num_data_cols
 
-        # Render column header row
+        # Render column header row (bright white)
         header_cols = st.columns(col_widths)
         with header_cols[0]:
             st.markdown("")
         for j, col_name in enumerate(df.columns):
             with header_cols[j + 1]:
-                st.markdown(f"**{col_name}**")
+                st.markdown(f'<span class="rules-table-header">{col_name}</span>', unsafe_allow_html=True)
 
-        # Render each record row with radio button in first column
+        # Render each record row with radio button in first column (bright white)
         for i in range(len(df)):
             row_cols = st.columns(col_widths)
             with row_cols[0]:
@@ -232,7 +251,7 @@ def page_feedback_rules():
                     st.rerun()
             for j, col_name in enumerate(df.columns):
                 with row_cols[j + 1]:
-                    st.markdown(str(df.iloc[i][col_name]))
+                    st.markdown(f'<span class="rules-table-cell">{df.iloc[i][col_name]}</span>', unsafe_allow_html=True)
 
     st.markdown("---")
     if st.button("⬅ Back to DQ Agent", key="back_dq_feedback"):
