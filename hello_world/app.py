@@ -393,7 +393,7 @@ def page_rule_detail():
                     st.error(f"Failed to trigger job: {e}")
 
     st.markdown("---")
-    if st.button("⬅ Back to Feedback Rules", key="back_feedback_from_detail"):
+    if st.button("⬅ Back to Review Rules", key="back_feedback_from_detail"):
         navigate("feedback_rules")
         st.rerun()
 
