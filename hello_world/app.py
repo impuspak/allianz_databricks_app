@@ -88,12 +88,37 @@ def page_home():
     )
     col1, col2 = st.columns(2, gap="large")
     with col1:
-        if st.button("STTM Agent", key="sttm"):
-            st.info("Launching STTM Agent...")
+        if st.button("Harmonization Agent", key="harmonization"):
+            navigate("harmonization_agent")
+            st.rerun()
     with col2:
         if st.button("DQ Agent", key="dq"):
             navigate("dq_agent")
             st.rerun()
+
+
+# ── Page: Harmonization Agent ───────────────────────────────────────────────
+def page_harmonization_agent():
+    st.markdown('<p class="launch-title">Harmonization Agent</p>', unsafe_allow_html=True)
+    st.markdown(
+        '<p class="launch-sub">Choose an action</p>',
+        unsafe_allow_html=True,
+    )
+    col1, col2, col3 = st.columns(3, gap="large")
+    with col1:
+        if st.button("Generate Mappings", key="gen_mappings"):
+            st.info("Generate Mappings — coming soon...")
+    with col2:
+        if st.button("Review generated mappings", key="review_mappings"):
+            st.info("Review generated mappings — coming soon...")
+    with col3:
+        if st.button("Load data using mappings", key="load_mappings"):
+            st.info("Load data using mappings — coming soon...")
+
+    st.markdown("---")
+    if st.button("⬅ Back to Home", key="back_home_harmonization"):
+        navigate("home")
+        st.rerun()
 
 
 # ── Page: DQ Agent ────────────────────────────────────────────────────────────
@@ -376,6 +401,8 @@ def page_rule_detail():
 # ── Router ────────────────────────────────────────────────────────────────────
 if st.session_state.page == "home":
     page_home()
+elif st.session_state.page == "harmonization_agent":
+    page_harmonization_agent()
 elif st.session_state.page == "dq_agent":
     page_dq_agent()
 elif st.session_state.page == "generate_dq_rules":
