@@ -134,7 +134,7 @@ def page_dq_agent():
             navigate("generate_dq_rules")
             st.rerun()
     with col2:
-        if st.button("Give Feedback for Rules", key="feedback_rules"):
+        if st.button("Review Rules", key="feedback_rules"):
             navigate("feedback_rules")
             st.rerun()
     with col3:
@@ -246,7 +246,7 @@ def page_apply_dq_rules():
 
 # ── Page: Feedback for Rules ──────────────────────────────────────────────────
 def page_feedback_rules():
-    st.markdown('<p class="launch-title">Give Feedback for Rules</p>', unsafe_allow_html=True)
+    st.markdown('<p class="launch-title">Review Rules</p>', unsafe_allow_html=True)
     st.markdown(
         '<p class="launch-sub">Fetch existing DQ rules and provide feedback</p>',
         unsafe_allow_html=True,
