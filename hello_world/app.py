@@ -71,11 +71,14 @@ if "page" not in st.session_state:
 
 
 def navigate(page_name: str):
-    # If navigating to feedback_rules, clear cached data so page refreshes
     if page_name == "feedback_rules":
         st.session_state.pop("feedback_df", None)
         st.session_state.pop("selected_rule_idx", None)
         st.session_state.pop("selected_rule_record", None)
+    if page_name == "review_mappings":
+        st.session_state.pop("mappings_df", None)
+        st.session_state.pop("selected_mapping_idx", None)
+        st.session_state.pop("selected_mapping_record", None)
     st.session_state.page = page_name
 
 
@@ -110,8 +113,9 @@ def page_harmonization_agent():
             navigate("generate_mappings")
             st.rerun()
     with col2:
-        if st.button("Review generated mappings", key="review_mappings"):
-            st.info("Review generated mappings — coming soon...")
+        if st.button("Review generated mappings", key="btn_review_mappings"):
+            navigate("review_mappings")
+            st.rerun()
     with col3:
         if st.button("Load data using mappings", key="load_mappings"):
             st.info("Load data using mappings — coming soon...")
@@ -134,7 +138,6 @@ def page_generate_mappings():
         source_table = st.text_input("Source Table", value="")
         target_table = st.text_input("Target Table", value="")
         custom_instructions = st.text_area("Custom Instructions", value="", height=120)
-
         submitted = st.form_submit_button("Generate")
 
     if submitted:
@@ -152,15 +155,123 @@ def page_generate_mappings():
                     job_id=899171319335477,
                     notebook_params=job_params,
                 )
-                st.success(
-                    f"Job triggered successfully! Run ID: {run.run_id}"
-                )
+                st.success(f"Job triggered successfully! Run ID: {run.run_id}")
             except Exception as e:
                 st.error(f"Failed to trigger job: {e}")
 
     st.markdown("---")
     if st.button("⬅ Back to Harmonization Agent", key="back_harmonization_from_mappings"):
         navigate("harmonization_agent")
+        st.rerun()
+
+
+# ── Page: Review Generated Mappings ──────────────────────────────────────────
+def page_review_mappings():
+    st.markdown('<p class="launch-title">Review Generated Mappings</p>', unsafe_allow_html=True)
+    st.markdown(
+        '<p class="launch-sub">Fetch and review existing mappings</p>',
+        unsafe_allow_html=True,
+    )
+
+    source_table = st.text_input("Source Table", value="", key="review_source_table")
+    target_table = st.text_input("Target Table", value="", key="review_target_table")
+
+    if st.button("Fetch Mappings", key="fetch_mappings"):
+        if not source_table or not target_table:
+            st.error("Please enter both Source Table and Target Table.")
+        else:
+            try:
+                w = WorkspaceClient()
+                warehouses = list(w.warehouses.list())
+                if not warehouses:
+                    st.error("No SQL warehouse available.")
+                else:
+                    warehouse_id = warehouses[0].id
+                    query = (
+                        f"SELECT * FROM allianz_ops.sttm.sttm_table "
+                        f"WHERE mapping_objects = concat('{source_table}', ' to ', '{target_table}')"
+                    )
+                    response = w.statement_execution.execute_statement(
+                        warehouse_id=warehouse_id,
+                        statement=query,
+                        wait_timeout="30s",
+                    )
+                    if response.result and response.manifest:
+                        columns = [col.name for col in response.manifest.schema.columns]
+                        rows = []
+                        for chunk in response.result.data_array:
+                            rows.append(chunk)
+                        if rows:
+                            df = pd.DataFrame(rows, columns=columns)
+                            st.session_state.mappings_df = df
+                        else:
+                            st.warning("No mappings found for the given source and target tables.")
+                            st.session_state.mappings_df = None
+                    else:
+                        st.warning("No mappings found for the given source and target tables.")
+                        st.session_state.mappings_df = None
+            except Exception as e:
+                st.error(f"Failed to fetch mappings: {e}")
+                st.session_state.mappings_df = None
+
+    if "mappings_df" in st.session_state and st.session_state.mappings_df is not None:
+        df = st.session_state.mappings_df
+        st.markdown("---")
+        st.markdown("**Fetched Mappings:**")
+
+        if "selected_mapping_idx" not in st.session_state:
+            st.session_state.selected_mapping_idx = 0
+
+        num_data_cols = len(df.columns)
+        col_widths = [0.5] + [2] * num_data_cols
+
+        header_cols = st.columns(col_widths)
+        with header_cols[0]:
+            st.markdown("")
+        for j, col_name in enumerate(df.columns):
+            with header_cols[j + 1]:
+                st.markdown(f'<span class="rules-table-header">{col_name}</span>', unsafe_allow_html=True)
+
+        for i in range(len(df)):
+            row_cols = st.columns(col_widths)
+            with row_cols[0]:
+                if st.button(
+                    "🔘" if i == st.session_state.selected_mapping_idx else "⚪",
+                    key=f"select_mapping_row_{i}",
+                    use_container_width=True,
+                ):
+                    st.session_state.selected_mapping_idx = i
+                    st.session_state.selected_mapping_record = df.iloc[i].to_dict()
+                    navigate("mapping_detail")
+                    st.rerun()
+            for j, col_name in enumerate(df.columns):
+                with row_cols[j + 1]:
+                    st.markdown(f'<span class="rules-table-cell">{df.iloc[i][col_name]}</span>', unsafe_allow_html=True)
+
+    st.markdown("---")
+    if st.button("⬅ Back to Harmonization Agent", key="back_harmonization_from_review"):
+        navigate("harmonization_agent")
+        st.rerun()
+
+
+# ── Page: Mapping Detail ──────────────────────────────────────────────────────
+def page_mapping_detail():
+    st.markdown('<p class="launch-title">Mapping Detail</p>', unsafe_allow_html=True)
+    st.markdown(
+        '<p class="launch-sub">Review the selected mapping record</p>',
+        unsafe_allow_html=True,
+    )
+
+    record = st.session_state.get("selected_mapping_record", {})
+    if not record:
+        st.warning("No mapping selected. Please go back and select a mapping.")
+    else:
+        for col_name, col_value in record.items():
+            st.text_input(f"{col_name}", value=str(col_value), disabled=True, key=f"mapping_detail_{col_name}")
+
+    st.markdown("---")
+    if st.button("⬅ Back to Review Mappings", key="back_review_from_detail"):
+        navigate("review_mappings")
         st.rerun()
 
 
@@ -208,7 +319,6 @@ def page_generate_dq_rules():
         )
         overwrite = st.selectbox("Overwrite (Y/N)", options=["Y", "N"], index=0)
         user_inputs = st.text_area("User Inputs", value="", height=100)
-
         submitted = st.form_submit_button("Generate")
 
     if submitted:
@@ -229,9 +339,7 @@ def page_generate_dq_rules():
                     job_id=614206750153806,
                     notebook_params=job_params,
                 )
-                st.success(
-                    f"Job triggered successfully! Run ID: {run.run_id}"
-                )
+                st.success(f"Job triggered successfully! Run ID: {run.run_id}")
             except Exception as e:
                 st.error(f"Failed to trigger job: {e}")
 
@@ -255,7 +363,6 @@ def page_apply_dq_rules():
         target_valid_table = st.text_input("Target Valid Table", value="")
         target_quarantine_table = st.text_input("Target Quarantine Table", value="")
         overwrite_target_tables = st.text_input("Overwrite Target Tables (Y/N)", value="")
-
         submitted = st.form_submit_button("Apply")
 
     if submitted:
@@ -267,7 +374,7 @@ def page_apply_dq_rules():
                 "data_for_dq_check": source_sql,
                 "good_data_table": target_valid_table,
                 "quarantine_table": target_quarantine_table,
-                "overwrite_target_data" : overwrite_target_tables
+                "overwrite_target_data": overwrite_target_tables,
             }
             try:
                 w = WorkspaceClient()
@@ -275,9 +382,7 @@ def page_apply_dq_rules():
                     job_id=424157152675054,
                     notebook_params=job_params,
                 )
-                st.success(
-                    f"Job triggered successfully! Run ID: {run.run_id}"
-                )
+                st.success(f"Job triggered successfully! Run ID: {run.run_id}")
             except Exception as e:
                 st.error(f"Failed to trigger job: {e}")
 
@@ -332,20 +437,17 @@ def page_feedback_rules():
                 st.error(f"Failed to fetch rules: {e}")
                 st.session_state.feedback_df = None
 
-    # Display results in tabular format with radio buttons as first column
     if "feedback_df" in st.session_state and st.session_state.feedback_df is not None:
         df = st.session_state.feedback_df
         st.markdown("---")
         st.markdown("**Fetched Rules:**")
 
-        # Initialize selected row
         if "selected_rule_idx" not in st.session_state:
             st.session_state.selected_rule_idx = 0
 
         num_data_cols = len(df.columns)
         col_widths = [0.5] + [2] * num_data_cols
 
-        # Render column header row (bright white)
         header_cols = st.columns(col_widths)
         with header_cols[0]:
             st.markdown("")
@@ -353,7 +455,6 @@ def page_feedback_rules():
             with header_cols[j + 1]:
                 st.markdown(f'<span class="rules-table-header">{col_name}</span>', unsafe_allow_html=True)
 
-        # Render each record row with radio button in first column (bright white)
         for i in range(len(df)):
             row_cols = st.columns(col_widths)
             with row_cols[0]:
@@ -362,7 +463,6 @@ def page_feedback_rules():
                     key=f"select_row_{i}",
                     use_container_width=True,
                 ):
-                    # Store selected record and navigate to detail page
                     st.session_state.selected_rule_idx = i
                     st.session_state.selected_rule_record = df.iloc[i].to_dict()
                     navigate("rule_detail")
@@ -389,16 +489,13 @@ def page_rule_detail():
     if not record:
         st.warning("No rule selected. Please go back and select a rule.")
     else:
-        # Display pre-filled immutable text fields for each column
         for col_name, col_value in record.items():
             st.text_input(f"{col_name}", value=str(col_value), disabled=True, key=f"detail_{col_name}")
 
         st.markdown("---")
 
-        # Feedback text input
         feedback = st.text_input("Feedback", value="", key="feedback_input")
 
-        # Modify and Delete buttons
         col1, col2 = st.columns(2, gap="large")
         with col1:
             if st.button("Modify", key="btn_modify"):
@@ -448,6 +545,10 @@ elif st.session_state.page == "harmonization_agent":
     page_harmonization_agent()
 elif st.session_state.page == "generate_mappings":
     page_generate_mappings()
+elif st.session_state.page == "review_mappings":
+    page_review_mappings()
+elif st.session_state.page == "mapping_detail":
+    page_mapping_detail()
 elif st.session_state.page == "dq_agent":
     page_dq_agent()
 elif st.session_state.page == "generate_dq_rules":
