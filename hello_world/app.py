@@ -118,7 +118,8 @@ def page_harmonization_agent():
             st.rerun()
     with col3:
         if st.button("Load data using mappings", key="load_mappings"):
-            st.info("Load data using mappings — coming soon...")
+            navigate("load_mappings_page")
+            st.rerun()
 
     st.markdown("---")
     if st.button("⬅ Back to Home", key="back_home_harmonization"):
@@ -272,6 +273,43 @@ def page_mapping_detail():
     st.markdown("---")
     if st.button("⬅ Back to Review Mappings", key="back_review_from_detail"):
         navigate("review_mappings")
+        st.rerun()
+
+
+# ── Page: Load Data Using Mappings ────────────────────────────────────────────
+def page_load_mappings():
+    st.markdown('<p class="launch-title">Load Data Using Mappings</p>', unsafe_allow_html=True)
+    st.markdown(
+        '<p class="launch-sub">Provide source and target tables to trigger the data load job</p>',
+        unsafe_allow_html=True,
+    )
+
+    with st.form("load_mappings_form"):
+        source_table = st.text_input("Source Table", value="")
+        target_table = st.text_input("Target Table", value="")
+        submitted = st.form_submit_button("Load")
+
+    if submitted:
+        if not source_table or not target_table:
+            st.error("Please fill in both Source Table and Target Table.")
+        else:
+            job_params = {
+                "source_table": source_table,
+                "target_table": target_table,
+            }
+            try:
+                w = WorkspaceClient()
+                run = w.jobs.run_now(
+                    job_id=1006403308266556,
+                    notebook_params=job_params,
+                )
+                st.success(f"Job triggered successfully! Run ID: {run.run_id}")
+            except Exception as e:
+                st.error(f"Failed to trigger job: {e}")
+
+    st.markdown("---")
+    if st.button("⬅ Back to Harmonization Agent", key="back_harmonization_from_load"):
+        navigate("harmonization_agent")
         st.rerun()
 
 
@@ -549,6 +587,8 @@ elif st.session_state.page == "review_mappings":
     page_review_mappings()
 elif st.session_state.page == "mapping_detail":
     page_mapping_detail()
+elif st.session_state.page == "load_mappings_page":
+    page_load_mappings()
 elif st.session_state.page == "dq_agent":
     page_dq_agent()
 elif st.session_state.page == "generate_dq_rules":
