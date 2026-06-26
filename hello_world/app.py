@@ -107,7 +107,8 @@ def page_harmonization_agent():
     col1, col2, col3 = st.columns(3, gap="large")
     with col1:
         if st.button("Generate Mappings", key="gen_mappings"):
-            st.info("Generate Mappings — coming soon...")
+            navigate("generate_mappings")
+            st.rerun()
     with col2:
         if st.button("Review generated mappings", key="review_mappings"):
             st.info("Review generated mappings — coming soon...")
@@ -118,6 +119,48 @@ def page_harmonization_agent():
     st.markdown("---")
     if st.button("⬅ Back to Home", key="back_home_harmonization"):
         navigate("home")
+        st.rerun()
+
+
+# ── Page: Generate Mappings ───────────────────────────────────────────────────
+def page_generate_mappings():
+    st.markdown('<p class="launch-title">Generate Mappings</p>', unsafe_allow_html=True)
+    st.markdown(
+        '<p class="launch-sub">Provide parameters to trigger the mapping generation job</p>',
+        unsafe_allow_html=True,
+    )
+
+    with st.form("generate_mappings_form"):
+        source_table = st.text_input("Source Table", value="")
+        target_table = st.text_input("Target Table", value="")
+        custom_instructions = st.text_area("Custom Instructions", value="", height=120)
+
+        submitted = st.form_submit_button("Generate")
+
+    if submitted:
+        if not source_table or not target_table:
+            st.error("Please fill in both Source Table and Target Table.")
+        else:
+            job_params = {
+                "source_table": source_table,
+                "target_table": target_table,
+                "custom_instructions": custom_instructions,
+            }
+            try:
+                w = WorkspaceClient()
+                run = w.jobs.run_now(
+                    job_id=899171319335477,
+                    notebook_params=job_params,
+                )
+                st.success(
+                    f"Job triggered successfully! Run ID: {run.run_id}"
+                )
+            except Exception as e:
+                st.error(f"Failed to trigger job: {e}")
+
+    st.markdown("---")
+    if st.button("⬅ Back to Harmonization Agent", key="back_harmonization_from_mappings"):
+        navigate("harmonization_agent")
         st.rerun()
 
 
@@ -134,7 +177,7 @@ def page_dq_agent():
             navigate("generate_dq_rules")
             st.rerun()
     with col2:
-        if st.button("Review Rules", key="feedback_rules"):
+        if st.button("Give Feedback for Rules", key="feedback_rules"):
             navigate("feedback_rules")
             st.rerun()
     with col3:
@@ -246,7 +289,7 @@ def page_apply_dq_rules():
 
 # ── Page: Feedback for Rules ──────────────────────────────────────────────────
 def page_feedback_rules():
-    st.markdown('<p class="launch-title">Review Rules</p>', unsafe_allow_html=True)
+    st.markdown('<p class="launch-title">Give Feedback for Rules</p>', unsafe_allow_html=True)
     st.markdown(
         '<p class="launch-sub">Fetch existing DQ rules and provide feedback</p>',
         unsafe_allow_html=True,
@@ -393,7 +436,7 @@ def page_rule_detail():
                     st.error(f"Failed to trigger job: {e}")
 
     st.markdown("---")
-    if st.button("⬅ Back to Review Rules", key="back_feedback_from_detail"):
+    if st.button("⬅ Back to Feedback Rules", key="back_feedback_from_detail"):
         navigate("feedback_rules")
         st.rerun()
 
@@ -403,6 +446,8 @@ if st.session_state.page == "home":
     page_home()
 elif st.session_state.page == "harmonization_agent":
     page_harmonization_agent()
+elif st.session_state.page == "generate_mappings":
+    page_generate_mappings()
 elif st.session_state.page == "dq_agent":
     page_dq_agent()
 elif st.session_state.page == "generate_dq_rules":
